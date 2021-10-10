@@ -24,31 +24,69 @@ function ask(questionText) {
 
 //move location function
 function moveLocation(newLocation) {
+  newLocation = newLocation.split(` `).slice(-1).join(``);
   if (transitions[currentLocation.name].includes(newLocation)) {
     console.log(`Moving from ${currentLocation.name} to ${newLocation}`);
-    currentLocation = locLookup[newLocation];
+    currentLocation = roomLookup[newLocation];
     console.log(currentLocation.desc);
   }
 }
 
+//function to examine items/rooms
+function examine(item) {
+  item = item.split(` `).slice(-1).join();
+  if (itemLookup[item] !== undefined) {
+    item = itemLookup[item];
+    console.log(item.examine);
+  } else {
+    item = roomLookup[item];
+    // console.log(item)
+    console.log(item.examine);
+  }
+}
+
+function drop(item) {
+  if (item.includes(`phone`)) {
+    console.log(`Can't drop that, what if you get a text?`);
+  } else if (item.includes(`wallet`)) {
+    console.log(`You can't drop this, it's genuine leather!`);
+  } else if (item.includes(`keys`)) {
+    console.log(`How would you get home without your car keys?`);
+  } else {
+    item = item.split(` `).splice(-1).join();
+    if (itemLookup[item] !== undefined) {
+      item = itemLookup[item];
+      item.drop(item); // important to keep item in the parenthesis or it will return undefined and lock up program
+    }
+  }
+}
+
+function take(item) {
+  item = item.split(` `).splice(-1).join(); //takes last word of input string (presumably the item, hope that input is right. Maybe way to compare all items in arrays and return common value? that could find any item in the input that is also in the room and return its value instead of just the last input item?)
+  if (itemLookup[item] !== undefined) {
+    //sanitizes input, checks for item
+    item = itemLookup[item]; //sets item to it's object definition
+    item.take(item); // runs useable object take function. Removes item from room inventory, adds it to player inventory
+  }
+}
+
 class Character {
-  constructor(name = `player`, desc = `this is you`, inventory = []) {
+  constructor(name = `player`, desc = `this is me`, inventory = []) {
     this.name = name;
     this.desc = desc;
     this.inventory = inventory;
   }
   checkInventory() {
-    console.log(this.inventory);
+    console.log(`You currently have ${this.inventory.join(`, `)}.`);
   }
 }
 
-let player = new Character(`Player`, `This is you!`, [
+let player = new Character(`Player`, `This is me!`, [
   `phone`,
   `wallet`,
   `keys`,
 ]);
 
-player.checkInventory()
 // defining Room class
 class Room {
   constructor(name = "", desc = "", exits = [], inventory = [], examine = "") {
@@ -66,7 +104,7 @@ let outside = new Room( //entrance room at bottom left of map
   `You stand outside the old factory. It looks the way you expected, run down and abandoned. The doorway in front of you stands open, the door having been broken in long ago.`,
   [`inside`, `basement`],
   [`rebar`],
-  `You look around the outside of the building. There's a door that looks like it goes down into a storm cellar. You also find an old piece of rebar on the ground about 2 feet long.`
+  `\nYou look around the outside of the building. There's a door that looks like it goes down into a storm cellar. You also find an old piece of rebar on the ground about 2 feet long.`
 );
 
 let mainFloor = new Room( //
@@ -161,16 +199,16 @@ class useableThing {
   take(item) {
     //take function for adding items from room to player inventory
     if (this === backpack) {
-      // may move backpack later, don't really want it to be an interactable object in this version of the game
+      // may move backpack later, don't really want it to be an interactable object in this version of the game. May want to use it as one in a later version though?
       console.log(`It's probably best to leave this where it is.`);
     } else {
-      item = item.split(` `).slice(-1).join(``); //takes last word of input string (presumably the item, hope that input is right. Maybe way to compare all items in arrays and return common value? that could find any item in the input that is also in the room and return its value instead of just the last input item?)
-      if (currentLocation.inventory.includes(item)) {
+      if (currentLocation.inventory.includes(item.name)) {
+        //input is sanitized by global take(), need to use item.name to do actual check for item
         //checks for item in room's inventory
         index = currentLocation.inventory.indexOf(item); // takes index of item if it's present
         currentLocation.inventory.splice(index, index + 1); //splices item out of room's inventory
-        player.inventory.push(item); // adds item to player's inventory
-        console.log(`You take the ${item}.`); // tells player the item is in their inventory
+        player.inventory.push(item.name); // adds item to player's inventory
+        console.log(`You pick up the ${item.name}.`); // tells player the item is in their inventory
       } else {
         console.log(`There's nothing like that here.`);
       }
@@ -178,12 +216,12 @@ class useableThing {
   }
 
   drop(item) {
-    item = item.split(` `).slice(-1).join(``);
-    if (player.inventory.includes(item)) {
+    // very similar to take(), just in reverse. Removes item from player inventory and adds it to room inventory
+    if (player.inventory.includes(item.name)) {
       index = player.inventory.indexOf(item);
       player.inventory.splice(index, index + 1);
-      currentLocation.inventory.push(item);
-      console.log(`You drop the ${item}.`);
+      currentLocation.inventory.push(item.name);
+      console.log(`You drop the ${item.name}.`);
     } else {
       console.log(`You aren't carrying anything like that.`);
     }
@@ -194,6 +232,9 @@ class useableThing {
     } else {
       console.log(`You cannot use this right now.`);
     }
+  }
+  examine() {
+    console.log(this.examine);
   }
 }
 
@@ -287,10 +328,7 @@ class unusableThing {
     this.desc = wrap(desc, 60);
     this.examine = wrap(examine, 60);
   }
-  interact() {
-    console.log(`There's nothing you can do with this object.`);
-  }
-  inspect() {
+  examine() {
     console.log(this.examine);
   }
 }
@@ -347,7 +385,10 @@ let transitions = {
 };
 
 async function start() {
-  const welcomeMessage = `Welcome! This text adventure is about Urban Exploration!\nYou'll be exploring an old textile factory just outside of town.\nTo interact with the world in the game, type them right into the cmd line.\nWe'll be using 'take', 'drop', 'examine', 'move to',\nand a few others to be decided later.`;
+  const welcomeMessage = wrap(
+    `Welcome! This text adventure is about Urban Exploration! You'll be exploring an old textile factory just outside of town. To interact with the world in the game, type them right into the cmd line. We'll be using 'take', 'drop', 'examine', 'move', and 'use' to interact with this world!\n`,
+    60
+  );
   console.log(welcomeMessage);
 
   //opening message
@@ -369,7 +410,8 @@ async function start() {
     }
   }
   if (message === `yes`) {
-    console.log(`Alright! Then let's get started!`);
+    console.log(`Alright! Then let's get started!\n`);
+    await sleep(1000);
     gameLaunch(); //begin adventure game
   }
 }
@@ -383,13 +425,26 @@ async function gameLaunch() {
   //the adventure game! we're here!
   console.log(
     wrap(
-      `It's a warm night. You stand outside an old textile factory on the edge of town. You heard about it from a friend and have decided to look around for yourself.`,
+      `It's a warm night. You stand outside an old textile factory on the edge of town. You heard about it from a friend and have decided to look around for yourself.\n`,
       60
     )
   );
   console.log(currentLocation.desc);
+  while ((reply = await ask(`\nWhat would you like to do? >_`))) {
+    if (reply.includes(`move`)) {
+      moveLocation(reply);
+    } else if (reply.includes(`examine`) || reply.includes(`read`)) {
+      examine(reply);
+    } else if (reply.includes(`take`)) {
+      take(reply);
+    } else if (reply.includes(`drop`)) {
+      drop(reply);
+    } else if (reply.includes(`check`) || reply.includes(`inventory`)) {
+      player.checkInventory();
+    } else {
+      console.log(`\nI'm sorry, I didn't understand.`);
+    }
+  }
 }
 
-// gameLaunch();
-
-console.log(rebar.take(`rebar`));
+gameLaunch();
