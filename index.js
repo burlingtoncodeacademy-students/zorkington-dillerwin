@@ -37,6 +37,9 @@ class Character {
     this.desc = desc;
     this.inventory = inventory;
   }
+  checkInventory() {
+    console.log(this.inventory);
+  }
 }
 
 let player = new Character(`Player`, `This is you!`, [
@@ -45,6 +48,7 @@ let player = new Character(`Player`, `This is you!`, [
   `keys`,
 ]);
 
+player.checkInventory()
 // defining Room class
 class Room {
   constructor(name = "", desc = "", exits = [], inventory = [], examine = "") {
@@ -154,18 +158,19 @@ class useableThing {
     this.examine = wrap(examine, 60);
   }
 
-  take(item) { //take function for adding items from room to player inventory
-    if (this === backpack) { // may move backpack later, don't really want it to be an interactable object in this version of the game
+  take(item) {
+    //take function for adding items from room to player inventory
+    if (this === backpack) {
+      // may move backpack later, don't really want it to be an interactable object in this version of the game
       console.log(`It's probably best to leave this where it is.`);
     } else {
-      item = item.split(` `).slice(-1).join(``); //takes last word of input string (presumably the item, hope that works right), 
+      item = item.split(` `).slice(-1).join(``); //takes last word of input string (presumably the item, hope that input is right. Maybe way to compare all items in arrays and return common value? that could find any item in the input that is also in the room and return its value instead of just the last input item?)
       if (currentLocation.inventory.includes(item)) {
-
-        index = currentLocation.inventory.indexOf(item);
-        currentLocation.inventory.splice(index, index + 1);
-        player.inventory.push(item);
-        console.log(`You take the ${item}.`);
-
+        //checks for item in room's inventory
+        index = currentLocation.inventory.indexOf(item); // takes index of item if it's present
+        currentLocation.inventory.splice(index, index + 1); //splices item out of room's inventory
+        player.inventory.push(item); // adds item to player's inventory
+        console.log(`You take the ${item}.`); // tells player the item is in their inventory
       } else {
         console.log(`There's nothing like that here.`);
       }
