@@ -28,26 +28,22 @@ function moveLocation(newLocation) {
     console.log(`Moving from ${currentLocation.name} to ${newLocation}`);
     currentLocation = locLookup[newLocation];
     console.log(currentLocation.desc);
-    //   if (currentLocation === store) {
-    //     // changes walkway description to show you're moving from the store to home
-    //     walkway.desc = `the sidewalk stretches in front of you. You're almost home.`;
-    //   }
-    //   if (currentLocation === inside) {
-    //     // changes store and store interior messages to indicate you've visited them
-    //     store.desc = `You've bought your cookies, it's time to head home.`;
-    //     inside.desc = `You've bought your cookies, did you forget something?`;
-    //   }
-    //   if (currentLocation === home) {
-    //     // walkway description to indicate you're moving towards the store
-    //     walkway.desc = `A sidewalk stretches ahead of you. The store is just around the corner.`;
-    //   }
-
-    //   // console.log(`You can move to ${currentLocation.exits.join(` or `)}`);
-    // } else {
-    //   console.log(`Sorry, you can't get there from here.`);
-    // }
   }
 }
+
+class Character {
+  constructor(name = `player`, desc = `this is you`, inventory = []) {
+    this.name = name;
+    this.desc = desc;
+    this.inventory = inventory;
+  }
+}
+
+let player = new Character(`Player`, `This is you!`, [
+  `phone`,
+  `wallet`,
+  `keys`,
+]);
 
 // defining Room class
 class Room {
@@ -63,9 +59,9 @@ class Room {
 // defining rooms
 let outside = new Room( //entrance room at bottom left of map
   `outside`,
-  `You stand outside the old factory. It looks the way you expected, run down and abandoned.`,
+  `You stand outside the old factory. It looks the way you expected, run down and abandoned. The doorway in front of you stands open, the door having been broken in long ago.`,
   [`inside`, `basement`],
-  [`metal pole`],
+  [`rebar`],
   `You look around the outside of the building. There's a door that looks like it goes down into a storm cellar. You also find an old piece of rebar on the ground about 2 feet long.`
 );
 
@@ -98,7 +94,7 @@ let secondFloor = new Room( // room after room 4. Has doors to rooms 4, 6, and 8
   `This floor is as large as the first. There is a similar brick shaft in the middle of the room. In the northeastern section of the room you can see a large object.`,
   [`northwest stairwell`, `southeast stairwell`],
   [`backpack`],
-  `You take a walk around the room. This floor has less large objects in it than the first, although it is scattered with pieces of the roof that have fallen in over the years. The back wall of this floor also has a set of large doors on the eastern wall that could slide open at one point. One of the sliding doors has fallen off, leaving the side of the building open here. The large object in the northeast corner is an old textile work line.`
+  `You take a walk around the room. This floor has less large objects in it than the first, although it is scattered with pieces of the roof that have fallen in over the years. The back wall of this floor also has a set of large doors on the eastern  wall that could slide open at one point. One of the sliding doors has fallen off, leaving the side of the building open here. The large object in the northeast corner is an old textile work line.`
 );
 
 let nwRoof = new Room( // final room. Not sure what will be here. Boss fight of some kind? Secret passage to/from room 7 behind a tapestry
@@ -113,18 +109,17 @@ let nwRoof = new Room( // final room. Not sure what will be here. Boss fight of 
 let eastRoof = new Room(
   `eastern roof`,
   `You climb up the ladder onto the portion of roof you could just see from by the stairwell. The object you couldn't quite make out was a pair of lawn chairs, apparently set up to stargaze. The safely usable footing here is fairly small, on a little bigger than the space the chairs take up.`,
-
   [`second floor`],
-  [`$20 bill`],
-  `You look around the chairs and find a 20 dollar bill someone must have dropped.`
+  [`$5 bill`],
+  `You look around the chairs and find a quarter someone must have dropped.`
 );
 
 let basement = new Room(
   `basement`,
-  `this is the basement`,
-  [`an exit`],
-  [``],
-  `looking around`
+  `You walk down the steps into the basement. A single naked light bulb hangs from the ceiling, lighting the small room. On the wall opposite you stands... a vending machine. It's running, humming gently as it keeps it's contents cold.`,
+  [`outside`],
+  [`coca-cola`],
+  `You look around the room more carefully. The only thing in here is the light and the vending machine.`
 );
 
 let roomLookup = {
@@ -158,15 +153,35 @@ class useableThing {
     this.useEntry = wrap(useEntry, 60);
     this.examine = wrap(examine, 60);
   }
-  take() {
-    if (this === backpack) {
+
+  take(item) { //take function for adding items from room to player inventory
+    if (this === backpack) { // may move backpack later, don't really want it to be an interactable object in this version of the game
       console.log(`It's probably best to leave this where it is.`);
     } else {
-      console.log(`You pick up ${this.name}.`);
+      item = item.split(` `).slice(-1).join(``); //takes last word of input string (presumably the item, hope that works right), 
+      if (currentLocation.inventory.includes(item)) {
+
+        index = currentLocation.inventory.indexOf(item);
+        currentLocation.inventory.splice(index, index + 1);
+        player.inventory.push(item);
+        console.log(`You take the ${item}.`);
+
+      } else {
+        console.log(`There's nothing like that here.`);
+      }
     }
   }
-  drop() {
-    console.log(`You drop ${this.name}.`);
+
+  drop(item) {
+    item = item.split(` `).slice(-1).join(``);
+    if (player.inventory.includes(item)) {
+      index = player.inventory.indexOf(item);
+      player.inventory.splice(index, index + 1);
+      currentLocation.inventory.push(item);
+      console.log(`You drop the ${item}.`);
+    } else {
+      console.log(`You aren't carrying anything like that.`);
+    }
   }
   use() {
     if (this.useable === true) {
@@ -202,9 +217,9 @@ let rebar = new useableThing(
   true
 );
 
-let money = new useableThing(
-  `money`,
-  `a 20 dollar bill`,
+let quarter = new useableThing(
+  `quarter`,
+  `a 25 cent coin`,
   false,
   true,
   `n/a`,
@@ -217,7 +232,7 @@ let note = new useableThing(
   false,
   true,
   "",
-  `You read the message on the paper: "You've gone the wrong way, the cool stuff is in the basement."`
+  `You read the message on the paper: "You've gone the wrong way, the cool stuff is in the basement. Passcode is 3264."`
 );
 
 let flashlight = new useableThing(
@@ -237,14 +252,23 @@ let backpack = new useableThing(
   `You look in the backpack. It has a change of clothes and some miscellaneous personal things in it.`
 );
 
+let cokeMachine = new useableThing(
+  `vending machine`,
+  `A Coca-cola branded vending machine.`,
+  false,
+  false,
+  `You input the code and your money. A fresh coke comes out.`,
+  `You look more closely at the vending machine. It has a keypad that apparently takes 4 digits and a coin slot.`
+);
+
 let itemLookup = {
   // lookup for interactable objects
   "roof door": roofDoor,
   "basement door": basementDoor,
   "cellar door": basementDoor,
   rebar: rebar,
-  money: money,
-  bill: money,
+  quarter: quarter,
+  coin: quarter,
   flashlight: flashlight,
   note: note,
   backpack: backpack,
@@ -266,20 +290,10 @@ class unusableThing {
   }
 }
 
-// lookup for non-interactable objects
-let unusableItemLookup = {
-  "wooden stalls": stalls,
-  puddle: puddle,
-  "textile line": oldLine,
-  table: oldLine,
-  "lawn chairs": chairs,
-  building: outsideBuilding,
-};
-
 let chairs = new unusableThing( //lawn chairs in eastRoof
   `lawn chairs`,
   `An old set of lawn chairs. It seems like they've been hoisted up here, maybe for stargazing.`,
-  `You look more closely at the lawn chairs. You find a 20 dollar bill under one. It must've been dropped by whoever used this last.`
+  `You look more closely at the lawn chairs. You find a quarter under one. It must've been dropped by whoever used this last.`
 );
 
 let stalls = new unusableThing( //wooden stalls in second floor
@@ -296,8 +310,25 @@ let puddle = new unusableThing(
 
 let oldLine = new unusableThing(
   `old textile line`,
-  `this machine probably had more to it at one point, but at this point it's basically just an odd table. There's a backpack sitting on the eastern end.`
+  `this machine probably had more to it at one point, but at this point it's basically just an odd, long table.`,
+  `You take a closer look at the old line. There's a backpack sitting on the east end.`
 );
+
+let building = new unusableThing(
+  `old outbuilding`,
+  `This rundown building stands just outside the factory. You can see the roof has fallen in.`,
+  `You don't think it's a good idea to go inside.`
+);
+
+// lookup for non-interactable objects
+let unusableItemLookup = {
+  "wooden stalls": stalls,
+  puddle: puddle,
+  "textile line": oldLine,
+  table: oldLine,
+  "lawn chairs": chairs,
+  building: building,
+};
 
 let transitions = {
   outside: [`main floor`, `inside`, `basement`],
@@ -309,12 +340,6 @@ let transitions = {
   eastRoof: [`second floor`],
   basement: [`outside`],
 };
-
-// function changeRoom(newRoom) { //moves you from room to room
-//   // move between rooms in game
-//   if ( ) {
-//   }
-// }
 
 async function start() {
   const welcomeMessage = `Welcome! This text adventure is about Urban Exploration!\nYou'll be exploring an old textile factory just outside of town.\nTo interact with the world in the game, type them right into the cmd line.\nWe'll be using 'take', 'drop', 'examine', 'move to',\nand a few others to be decided later.`;
@@ -344,8 +369,22 @@ async function start() {
   }
 }
 // start();
+// adventure game begin
+let currentLocation = outside;
+
+let index = 0;
 
 async function gameLaunch() {
   //the adventure game! we're here!
-  let currentLocation = outside;
+  console.log(
+    wrap(
+      `It's a warm night. You stand outside an old textile factory on the edge of town. You heard about it from a friend and have decided to look around for yourself.`,
+      60
+    )
+  );
+  console.log(currentLocation.desc);
 }
+
+// gameLaunch();
+
+console.log(rebar.take(`rebar`));
