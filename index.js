@@ -83,6 +83,9 @@ function locationCatch(newLocation) {
 //move location function
 function moveLocation(newLocation) {
   newLocation = locationCatch(newLocation); //puts location through sanitization to catch correct place
+  console.log(newLocation);
+  console.log(roofDoor.useable);
+  console.log(transitions[currentLocation.name]);
   if (transitions[currentLocation.name].includes(newLocation)) {
     //checks that transition requested is an allowed transition
     console.log(`Moving from ${currentLocation.name} to ${newLocation}`); //tells player they're moving
@@ -164,9 +167,13 @@ function use(item) {
   } else {
     if (item.includes(`key`)) {
       //catch for specifically roof key right now
-      item = roofKey;
-      roofDoor.useable = true; //sets roof door to useable
-      console.log(item.useEntry);
+      if (currentLocation === northRoof) {
+        item = roofKey;
+        roofDoor.useable = true; //sets roof door to useable
+        console.log(item.useEntry);
+      } else {
+        console.log(`There's no where to use that right now.`);
+      }
     } else {
       item = item.split(` `).slice(-1).join(); // poor catch option, relies on used item being last word in string. Will improve on as with location catches
       if (itemLookup[item] !== undefined) {
@@ -232,8 +239,8 @@ let mainFloor = new Room( //
 let northStair = new Room( // next room in building after room 1. Not sure what will be in here yet
   `north stairwell`,
   `This stairwell is in disrepair. A few steps are missing, but none that make it impossible to use. This stairwell can take to you to the second floor and the roof.`,
-  [`main floor`, `second floor`, `roof`],
-  [],
+  [`main floor`, `second floor`, `roof`, `north roof`],
+  [`roof door`],
   `You look around the stairwell carefully, but there's nothing special to be found here.`
 );
 
@@ -255,8 +262,7 @@ let secondFloor = new Room( // room after room 4. Has doors to rooms 4, 6, and 8
 
 let northRoof = new Room( // final room. Not sure what will be here. Boss fight of some kind? Secret passage to/from room 7 behind a tapestry
   `north roof`,
-  `You open the stairwell door and stand out on the roof. Much of it is missing, fallen into the floor below. There is a solid area just around the door, and you can see one across the roof that has something on it, although you can't quite see what it is.`,
-
+  `You open the stairwell door and stand out on the roof. Much of it is missing, fallen into the floor below. There is a solid area just around the door, and you can see another stretch of stable foot on the eastern side that has something on it, although you can't quite see what it is.`,
   [`north stairwell`],
   [],
   `You look around more carefully. You still can't quite make out what's on the other portion of the roof, but you can just see the top of an old fire escape over on the eastern wall. You also find a piece of paper tucked under a brick that says "You've gone the wrong way, the cool stuff is in the basement."`
@@ -264,9 +270,9 @@ let northRoof = new Room( // final room. Not sure what will be here. Boss fight 
 
 let eastRoof = new Room(
   `eastern roof`,
-  `You climb up the fire escape onto the portion of roof you could just see from by the stairwell. The object you couldn't quite make out was a pair of lawn chairs, apparently set up to stargaze. The safely usable footing here is fairly small, on a little bigger than the space the chairs take up.`,
+  `You climb up the fire escape onto the portion of roof you could just see from by the stairwell. The object you couldn't quite make out was a pair of lawn chairs, apparently set up to stargaze. The safely usable footing here is fairly small, only a little bigger than the space the chairs take up.`,
   [`second floor`],
-  [`$5 bill`],
+  [`quarter`],
   `You look around the chairs and find a quarter someone must have dropped.`
 );
 
@@ -307,7 +313,7 @@ class useableThing {
     examine = `` //more in depth description
   ) {
     this.name = name;
-    this.desc = wrap(desc, 60);
+    this.desc = wrap(desc, 60); //wraps all descriptions at 60 characters
     this.useable = useable;
     this.addToInventory = addToInventory;
     this.useEntry = wrap(useEntry, 60);
@@ -322,7 +328,7 @@ class useableThing {
     } else {
       if (
         currentLocation.inventory.includes(item.name) &&
-        item.useable === true
+        item.useable === true // checks that an item is in the current location and if it can be added to inventory
       ) {
         //input is sanitized by global take(), need to use item.name to do actual check for item
         //checks for item in room's inventory
@@ -352,11 +358,11 @@ class useableThing {
     if (this.useable === true) {
       //will eventually let me put in things to be used
       if (this === roofKey && currentLocation === northStair) {
-        console.log(roofDoor.useable);
+        //checks for key and north stairwell before unlocking the door
         roofDoor.useable = true;
-        console.log(roofDoor.useable);
         return console.log(`You use the key to unlock the door.`);
       }
+      console.log(`You cannot use this here.`);
     } else {
       console.log(`You cannot use this right now.`);
     }
@@ -545,7 +551,7 @@ let transitions = {
   outside: [`main floor`, `inside`, `basement`],
   "main floor": [`outside`, `north stairwell`, `south stairwell`],
   "second floor": [`north stairwell`, `south stairwell`, `fire escape`],
-  "north stairwell": [`main floor`, `second floor`, `roof`],
+  "north stairwell": [`main floor`, `second floor`, `roof`, `north roof`],
   "south stairwell": [`main floor`, `second floor`],
   "north roof": [`north stairwell`],
   "east roof": [`second floor`],
