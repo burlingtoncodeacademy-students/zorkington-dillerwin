@@ -1,8 +1,10 @@
+//all functions here are borrowed from other places
+
 // wrap function that won't split words apart, found at https://stackoverflow.com/a/51506718/17080692
 const wrap = (s, w) =>
   s.replace(new RegExp(`(?![^\\n]{1,${w}}$)([^\\n]{1,${w}})\\s`, "g"), "$1\n");
 
-// delay function
+// delay function originally showed to me by Matthew Crownover
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -14,16 +16,17 @@ const readlineInterface = readline.createInterface(
   process.stdout
 );
 
+//ask function to go with readline
 function ask(questionText) {
   return new Promise((resolve, reject) => {
     readlineInterface.question(questionText, resolve);
   });
 }
 
-//defining functions I'll be using
+//defining my own functions I'll be using
 
 function locationCatch(newLocation) {
-  //working as intended
+  //input sanitization for move location inputs
   if (
     //trying to catch movement to stairways since they're multi-word
     newLocation.includes(`stairwell`) ||
@@ -31,31 +34,37 @@ function locationCatch(newLocation) {
     newLocation.includes(`stair`)
   ) {
     if (newLocation.includes(`south`) || newLocation.includes(`southern`)) {
+      //specifically filtering out movement to southern stairwell
       // south stair catch
       return (newLocation = southStair.name);
     } else if (
-      newLocation.includes(`north`) || //north stair catch
+      newLocation.includes(`north`) || //specific filter for northern stairwell
       newLocation.includes(`northern`)
     ) {
       newLocation = northStair.name;
       return newLocation;
     }
   } else if (newLocation.includes(`roof`)) {
+    //specific catch for roof, intends to check for door having been unlocked. Right now can't move to roof when door is unlocked, not sure why yet
     console.log(roofDoor.useable);
     if (roofDoor.useable === false) {
+      //checks for roofDoof being useable (if it's been unlocked or not)
       return console.log(`The door is locked, you can't proceed.`);
     } else {
       return (newLocation = northRoof.name);
     }
   } else if (newLocation.includes(`outside`)) {
+    //checks for player wanting to move outside
     return (newLocation = outside.name);
   } else if (newLocation.includes(`basement`)) {
+    //checks for player wanting to move to basement
     if (basementDoor.useable === false) {
       return console.log(`The basement door is locked tight.`);
     } else {
       return (newLocation = basement.name);
     }
   } else if (
+    //check for several variations that would return to first floor room
     newLocation.includes(`inside`) ||
     newLocation.includes(`main floor`) ||
     newLocation.includes(`first floor`)
@@ -63,25 +72,26 @@ function locationCatch(newLocation) {
     newLocation = mainFloor.name;
     return newLocation;
   } else if (newLocation.includes(`second floor`)) {
+    //check for moving to second floor
     newLocation = secondFloor.name;
     return newLocation;
-  }
+  } //need to add checks for East Roof
 }
 
-// function itemDefine //will use to define items for more accurate use
+// function itemDefine //will use to define items for more accurate use as with locations
 
 //move location function
 function moveLocation(newLocation) {
   newLocation = locationCatch(newLocation); //puts location through sanitization to catch correct place
   if (transitions[currentLocation.name].includes(newLocation)) {
     //checks that transition requested is an allowed transition
-    console.log(`Moving from ${currentLocation.name} to ${newLocation}`);
-    currentLocation = roomLookup[newLocation];
-    console.log(currentLocation.desc);
-    console.log(currentLocation.exits);
+    console.log(`Moving from ${currentLocation.name} to ${newLocation}`); //tells player they're moving
+    currentLocation = roomLookup[newLocation]; //sets current location to new room
+    console.log(currentLocation.desc); //runs room description. Should make this so that after the first time you move into a room it changes room description slightly, at least for mainFloor room
+    console.log(currentLocation.exits); //logs the places you can move to
     return currentLocation;
   } else {
-    console.log(`You can't move there.`);
+    console.log(`You can't move there.`); //tells player a place isn't somewhere they can go
     return currentLocation;
   }
 }
@@ -89,19 +99,22 @@ function moveLocation(newLocation) {
 //function to examine items/rooms
 function examine(item) {
   //currently relies on intended object to be last item in string
+  //examine not set up for unusable things right now, need to fix
   if (item === undefined) {
     return console.log(`Sorry, I didn't understand`);
   } else {
-    item = item.split(` `).slice(-1).join();
+    item = item.split(` `).slice(-1).join(); //poor catch for item, require item being last item in string. Will improve upon
     if (itemLookup[item] !== undefined) {
+      //checks for item in item lookup and logs it's examine text
       item = itemLookup[item];
       console.log(item.examine);
     } else {
       if (item === `room`) {
+        //checks to see if player input "examine room" then runs examine for current location
         console.log(currentLocation.examine);
       } else {
-        item = roomLookup[item];
-        // console.log(item)
+        item = roomLookup[item]; // checks to see if player input "examine" and the room name. Should fix this so it doesn't allow player to examine a room unless they're in it
+        console.log(item);
         console.log(item.examine);
       }
     }
@@ -126,7 +139,9 @@ function drop(item) {
 }
 
 function take(item) {
+  //function for adding items to inventory
   if (item.includes(`key`)) {
+    //check specifically for roof key
     item = roofKey;
     item.take(item);
   } else {
@@ -135,27 +150,32 @@ function take(item) {
       //sanitizes input, checks for item
       item = itemLookup[item]; //sets item to it's object definition
       item.take(item); // runs useable object take function. Removes item from room inventory, adds it to player inventory
+    } else {
+      console.log(`Sorry, I don't understand.`);
     }
   }
 }
 
 function use(item) {
+  //function for using an item
   if (item === undefined) {
-    return console.log(`Sorry, I don't understand.`);
+    //returns sorry if item is not listed on item table
+    console.log(`Sorry, I don't understand.`);
   } else {
     if (item.includes(`key`)) {
+      //catch for specifically roof key right now
       item = roofKey;
-      roofDoor.useable = true;
-      console.log(roofDoor.useable);
-      return console.log(item.useEntry);
+      roofDoor.useable = true; //sets roof door to useable
+      console.log(item.useEntry);
     } else {
-      item = item.split(` `).slice(-1).join();
+      item = item.split(` `).slice(-1).join(); // poor catch option, relies on used item being last word in string. Will improve on as with location catches
       if (itemLookup[item] !== undefined) {
         item = itemLookup[item];
         if (item.useable === true) {
-          return console.log(item.useEntry);
+          //checks for item being useable
+          console.log(item.useEntry);
         } else {
-          return console.log(`Sorry, you can't use that right now.`);
+          console.log(`Sorry, you can't use that right now.`);
         }
       }
     }
@@ -163,18 +183,20 @@ function use(item) {
 }
 
 class Character {
+  //just the one Character right now. Maybe add more later? Different characters can access different things?
   constructor(name = `player`, desc = `this is me`, inventory = []) {
-    this.name = name;
-    this.desc = desc;
-    this.inventory = inventory;
+    this.name = name; //name of player
+    this.desc = desc; //description of player
+    this.inventory = inventory; //player inventory
   }
   checkInventory() {
+    //checks player's inventory
     console.log(`You currently have ${this.inventory.join(`, `)}.`);
   }
 }
 
-let player = new Character(`Player`, `This is me!`, [
-  `phone`,
+let player = new Character(`player`, `This is me!`, [
+  `phone`, // shouldn't go anywhere without PWK
   `wallet`,
   `keys`,
 ]);
@@ -185,8 +207,8 @@ class Room {
     this.name = name; //name of room
     this.desc = wrap(desc, 60); // description of room
     this.exits = exits; // exits from this room
-    this.inventory = inventory;
-    this.examine = wrap(examine, 60);
+    this.inventory = inventory; //inventory of rooms
+    this.examine = wrap(examine, 60); //more in-depth description of room
   }
 }
 
@@ -248,7 +270,7 @@ let eastRoof = new Room(
   `You look around the chairs and find a quarter someone must have dropped.`
 );
 
-let basement = new Room(
+let basement = new Room( // the basement. Unfinished in program as yet
   `basement`,
   `You walk down the steps into the basement. A single naked light bulb hangs from the ceiling, lighting the small room. On the wall opposite you stands... a vending machine. It's running, humming gently as it keeps it's contents cold.`,
   [`outside`],
@@ -257,6 +279,7 @@ let basement = new Room(
 );
 
 let roomLookup = {
+  //lookup table for room, included other name that might be used
   outside: outside,
   "main floor": mainFloor,
   inside: mainFloor,
@@ -274,14 +297,14 @@ let roomLookup = {
 
 //defining interactable object class
 class useableThing {
-  //we're gonna have things. Name, description
+  //we're gonna have things
   constructor(
-    name,
-    desc = ``,
-    useable = false,
-    addToInventory = false,
-    useEntry = ``,
-    examine = ``
+    name, //name for item
+    desc = ``, // description of items
+    useable = false, // can this thing be used?
+    addToInventory = false, //can this thing be added to inventory? prefer false default here
+    useEntry = ``, //text for when an item is used
+    examine = `` //more in depth description
   ) {
     this.name = name;
     this.desc = wrap(desc, 60);
@@ -433,8 +456,20 @@ let roofKey = new useableThing( //key for the door that goes to the roof
   `It's an old key. Any branding or label it may have had have come off.`
 );
 
+let elevator = new useableThing( //set as useable thing for now, will probably be moved to unusable things later
+  `elevator shaft`,
+  `An old brick elevator shaft. It isn't large, probably only meant for sending small loads, not people. Closer to a dumbwaiter, really.`,
+  false,
+  false,
+  ``,
+  `You see a glint in the dirt at the bottom. There's a key sitting there.`
+);
+
 let itemLookup = {
   // lookup for interactable objects
+  elevator: elevator,
+  "old elevator": elevator,
+  "old lift": elevator,
   "roof key": roofKey,
   "roof door": roofDoor,
   "basement door": basementDoor,
@@ -494,6 +529,8 @@ let building = new unusableThing(
 // lookup for non-interactable objects
 let unusableItemLookup = {
   // haven't used this, but I'm sure it'll come in handy
+  shaft: elevator,
+  elevator: elevator,
   "wooden stalls": stalls,
   puddle: puddle,
   "old textile line": oldLine,
